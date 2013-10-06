@@ -19,24 +19,21 @@ def asgrey(out, inp, quiet=False):
 
     import png
 
-    r = png.Reader(file=inp)
-    _,_,pixels,info = r.asDirect()
-    if info['greyscale']:
-        w = png.Writer(**info)
-        return w.write(out, pixels)
-    planes = info['planes']
-    targetplanes = planes - 2
-    alpha = info['alpha']
-    width = info['size'][0]
-    typecode = 'BH'[info['bitdepth'] > 8]
+    image = png.read(file=inp).direct()
+
+    if image.greyscale:
+        return image.write(out)
+    targetplanes = image.planes - 2
+    alpha = image.alpha
+    typecode = 'BH'[image.bitdepth > 8]
     # Values per target row
-    vpr = width * (targetplanes)
-    def iterasgrey():
-        for i,row in enumerate(pixels):
+    vpr = image.width * (targetplanes)
+    def iter_as_grey(rows):
+        for i,row in enumerate(rows):
             row = array(typecode, row)
             targetrow = array(typecode, [0]*vpr)
             # Copy G (and possibly A) channel.
-            green = row[0::planes]
+            green = row[0::image.planes]
             if alpha:
                 targetrow[0::2] = green
                 targetrow[1::2] = row[3::4]
@@ -47,10 +44,12 @@ def asgrey(out, inp, quiet=False):
               green != row[0::planes] or green != row[2::planes]):
                 raise ValueError('Row %i contains non-grey pixel.' % i)
             yield targetrow
-    info['greyscale'] = True
+    info = dict(image.info)
     del info['planes']
-    w = png.Writer(**info)
-    w.write(out, iterasgrey())
+    info['greyscale'] = True
+    grey_image = png.new(info=info)
+    grey_image = grey_image.rows(iter_as_grey(image.rows()))
+    grey_image.write(out)
 
 def main(argv=None):
     from getopt import getopt

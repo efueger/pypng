@@ -1248,6 +1248,14 @@ def from_array(a, mode=None, info={}):
 # So that refugee's from PIL feel more at home.  Not documented.
 fromarray = from_array
 
+def read(file):
+    image = Image(None, None)
+    image.file = file
+    return image
+
+def new(info=None):
+    return Image(None, info)
+
 class Image:
     """A PNG image.
     You can create an :class:`Image` object from an array of pixels by calling
@@ -1260,8 +1268,32 @@ class Image:
           The constructor is not public.  Please do not call it.
         """
         
-        self.rows = rows
+        self._rows = rows
         self.info = info
+        self.file = None
+
+    def direct(self):
+        if not self.file:
+            raise TypeError("No source PNG found.")
+        self.reader = Reader(file=self.file)
+        _, _, rows, info = self.reader.asDirect()
+        self.info = info
+        self.__dict__.update(info)
+        self.width, self.height = self.size
+        self._rows = rows
+        return self
+
+    def rows(self, rows=None):
+        """Getter/setter for the rows iterator. If an argument
+        is supplied then that argument becomes the rows iterator
+        and `self` is returned; if not argument is supplied then
+        the rows iterator is returned.
+        """
+
+        if not rows:
+            return self._rows
+        self._rows = rows
+        return self
 
     def save(self, file):
         """Save the image to *file*.  If *file* looks like an open file
@@ -1284,9 +1316,10 @@ class Image:
             def close(): file.close()
 
         try:
-            w.write(file, self.rows)
+            w.write(file, self._rows)
         finally:
             close()
+    write = save
 
 class _readable:
     """
