@@ -637,6 +637,15 @@ class Test(unittest.TestCase):
         meta = dict(alpha=False, greyscale=True, bitdepth=2, planes=1)
         png.write_pnm(o, w, h, pixels, meta)
 
+    def testRowLengthError(self):
+        # See https://github.com/drj11/pypng/issues/28
+        writer = png.Writer(width=4, height=1, greyscale=True)
+        o = BytesIO()
+
+        self.assertRaises(png.Error,
+          writer.write,
+          o, [[1, 111, 222]])
+
 def group(s, n):
     # See http://www.python.org/doc/2.6/library/functions.html#zip
     return zip(*[iter(s)]*n)
